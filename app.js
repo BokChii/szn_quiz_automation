@@ -118,34 +118,80 @@ function handleFileSelect(e) {
   }
 }
 
-fileInput.addEventListener('change', handleFileSelect);
+// 파일 입력 이벤트 리스너
+if (fileInput) {
+  fileInput.addEventListener('change', handleFileSelect);
+  debugLog('INIT', '파일 입력 이벤트 리스너 등록 완료');
+} else {
+  errorLog('파일 입력 요소를 찾을 수 없습니다', null);
+}
 
 // 드래그 앤 드롭
 const uploader = document.querySelector('#image-uploader label');
+const uploaderContainer = document.querySelector('#image-uploader');
+
 if (uploader) {
+  // label 클릭 시 파일 선택 창 열기 (추가 보장)
+  uploader.addEventListener('click', (e) => {
+    if (fileInput && e.target.tagName !== 'INPUT') {
+      fileInput.click();
+      debugLog('CLICK', '파일 선택 창 열기');
+    }
+  });
+
+  // 드래그 오버
   uploader.addEventListener('dragover', (e) => {
     e.preventDefault();
+    e.stopPropagation();
     uploader.classList.add('bg-indigo-200');
     debugLog('DRAG', '드래그 오버');
   });
 
-  uploader.addEventListener('dragleave', () => {
+  // 드래그 리브
+  uploader.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
     uploader.classList.remove('bg-indigo-200');
     debugLog('DRAG', '드래그 리브');
   });
 
+  // 드롭
   uploader.addEventListener('drop', (e) => {
     try {
       e.preventDefault();
+      e.stopPropagation();
       uploader.classList.remove('bg-indigo-200');
       const files = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('image/'));
       debugLog('DRAG', '파일 드롭', { fileCount: files.length });
-      handleFiles(files);
+      if (files.length > 0) {
+        handleFiles(files);
+      } else {
+        showError('이미지 파일만 업로드할 수 있습니다.');
+      }
     } catch (error) {
       errorLog('드래그 앤 드롭 처리 실패', error);
       showError('파일을 드롭하는 중 오류가 발생했습니다.');
     }
   });
+
+  // 컨테이너에도 드래그 이벤트 추가 (더 넓은 영역 커버)
+  if (uploaderContainer) {
+    uploaderContainer.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    });
+
+    uploaderContainer.addEventListener('drop', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const files = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('image/'));
+      if (files.length > 0) {
+        handleFiles(files);
+      }
+    });
+  }
+
+  debugLog('INIT', '드래그 앤 드롭 이벤트 리스너 등록 완료');
 } else {
   errorLog('업로더 요소를 찾을 수 없습니다', null);
 }
@@ -755,6 +801,21 @@ window.addEventListener('unhandledrejection', (event) => {
 // 초기화
 try {
   if (checkBrowserCompatibility()) {
+    // API 키 확인
+    if (!window.GEMINI_API_KEY || window.GEMINI_API_KEY.trim() === '') {
+      const apiKeyWarning = document.createElement('div');
+      apiKeyWarning.className = 'mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-xl text-yellow-800 text-sm font-bold text-center';
+      apiKeyWarning.innerHTML = '⚠️ API 키가 설정되지 않았습니다. <code class="bg-yellow-100 px-2 py-1 rounded">config.js</code> 파일에서 Gemini API 키를 설정해주세요.';
+      const idleStateContent = document.querySelector('#idle-state');
+      if (idleStateContent && !document.querySelector('.api-key-warning')) {
+        apiKeyWarning.classList.add('api-key-warning');
+        idleStateContent.insertBefore(apiKeyWarning, idleStateContent.firstChild);
+        errorLog('API 키 미설정 경고 표시', null);
+      }
+    } else {
+      debugLog('INIT', 'API 키 확인 완료');
+    }
+
     updateGenerateButton();
     debugLog('INIT', '앱 초기화 완료');
   }
