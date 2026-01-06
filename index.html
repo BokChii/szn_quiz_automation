@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>웹툰 퀴즈 마스터</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Bangers&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-slate-50 text-slate-900">
+  <div class="min-h-screen p-4 md:p-8 flex flex-col items-center">
+    <!-- Header -->
+    <header class="max-w-4xl w-full text-center mb-12">
+      <h1 class="webtoon-font text-5xl md:text-6xl text-indigo-600 mb-2 transform -rotate-2">
+        웹툰 퀴즈 마스터
+      </h1>
+      <p class="text-slate-500 font-bold text-lg">
+        좋아하는 웹툰 장면을 업로드하고 AI가 만든 퀴즈에 도전하세요!
+      </p>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-2xl w-full">
+      <!-- IDLE State: Image Upload & Settings -->
+      <div id="idle-state" class="bg-white rounded-3xl shadow-xl p-8 border border-slate-100">
+        <h2 class="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+          <span class="w-8 h-8 bg-indigo-600 text-white rounded-full flex items-center justify-center text-sm font-black">1</span>
+          스크린샷 업로드
+        </h2>
+        
+        <div id="image-uploader" class="space-y-4">
+          <div class="flex items-center justify-center w-full">
+            <label class="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-indigo-300 rounded-2xl cursor-pointer bg-indigo-50 hover:bg-indigo-100 transition-colors">
+              <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                <svg class="w-8 h-8 mb-4 text-indigo-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16">
+                  <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"/>
+                </svg>
+                <p class="mb-2 text-sm text-indigo-700 font-bold">웹툰 스크린샷 업로드</p>
+                <p class="text-xs text-indigo-500">클릭하거나 파일을 이 위로 끌어다 놓으세요 (여러 장 가능)</p>
+              </div>
+              <input type="file" id="file-input" class="hidden" multiple accept="image/*" />
+            </label>
+          </div>
+
+          <div id="image-preview" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-6"></div>
+        </div>
+
+        <div class="mt-10 pt-10 border-t border-slate-100">
+          <h2 class="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+            <span class="w-8 h-8 bg-indigo-600 text-white rounded-full flex items-center justify-center text-sm font-black">2</span>
+            퀴즈 설정
+          </h2>
+          
+          <div class="flex flex-col gap-2">
+            <label class="text-sm font-bold text-slate-500 uppercase">생성할 문제 수</label>
+            <div class="flex items-center gap-4">
+              <button class="question-count-btn flex-1 py-3 rounded-xl border-2 transition-all font-bold bg-indigo-600 border-indigo-600 text-white" data-count="3">3개</button>
+              <button class="question-count-btn flex-1 py-3 rounded-xl border-2 transition-all font-bold bg-white border-slate-200 text-slate-500 hover:border-indigo-300" data-count="5">5개</button>
+              <button class="question-count-btn flex-1 py-3 rounded-xl border-2 transition-all font-bold bg-white border-slate-200 text-slate-500 hover:border-indigo-300" data-count="7">7개</button>
+              <button class="question-count-btn flex-1 py-3 rounded-xl border-2 transition-all font-bold bg-white border-slate-200 text-slate-500 hover:border-indigo-300" data-count="10">10개</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="error-message" class="mt-6 p-4 bg-red-50 border border-red-100 rounded-xl text-red-600 text-sm font-bold text-center hidden"></div>
+
+        <button id="generate-btn" class="mt-10 w-full py-5 rounded-2xl font-black text-xl shadow-lg transition-all active:scale-[0.98] bg-slate-200 text-slate-400 cursor-not-allowed">
+          퀴즈 생성하기 ✨
+        </button>
+      </div>
+
+      <!-- PROCESSING State -->
+      <div id="processing-state" class="bg-white rounded-3xl shadow-xl p-12 border border-slate-100 text-center hidden">
+        <div class="relative w-24 h-24 mx-auto mb-8">
+          <div class="absolute inset-0 border-4 border-indigo-100 rounded-full"></div>
+          <div class="absolute inset-0 border-4 border-indigo-600 rounded-full border-t-transparent animate-spin"></div>
+        </div>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">AI 분석 중...</h2>
+        <p class="text-slate-500 leading-relaxed">
+          Gemini가 스크린샷의 텍스트를 읽고 스토리를 이해하며<br />
+          재미있는 퀴즈를 만들고 있습니다. 잠시만 기다려주세요!
+        </p>
+        <div class="mt-8 space-y-3">
+          <div class="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+            <div class="h-full bg-indigo-500 animate-pulse w-3/4"></div>
+          </div>
+          <p class="text-xs text-indigo-400 font-bold uppercase tracking-widest animate-pulse">
+            OCR • 문맥 분석 • 문제 출제 중
+          </p>
+        </div>
+      </div>
+
+      <!-- QUIZ State -->
+      <div id="quiz-state" class="bg-white rounded-3xl shadow-xl p-8 border border-slate-100 animate-in fade-in slide-in-from-bottom-4 duration-500 hidden"></div>
+
+      <!-- RESULT State -->
+      <div id="result-state" class="bg-white rounded-3xl shadow-2xl p-12 border border-slate-100 text-center animate-in zoom-in duration-500 hidden"></div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-auto py-12 text-slate-400 text-sm flex flex-col items-center gap-4">
+      <div class="flex items-center gap-6 font-medium">
+        <a href="#" class="hover:text-indigo-500 transition-colors">이용 방법</a>
+        <span class="w-1 h-1 bg-slate-300 rounded-full"></span>
+        <a href="#" class="hover:text-indigo-500 transition-colors">개인정보 처리방침</a>
+        <span class="w-1 h-1 bg-slate-300 rounded-full"></span>
+        <a href="#" class="hover:text-indigo-500 transition-colors">문의하기</a>
+      </div>
+      <p>© 2024 웹툰 퀴즈 마스터 • Powered by Gemini AI</p>
+    </footer>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="services/geminiService.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

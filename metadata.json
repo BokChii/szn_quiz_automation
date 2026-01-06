@@ -1,0 +1,7 @@
+{
+  "name": "웹툰 퀴즈 마스터",
+  "description": "웹툰 스크린샷을 업로드하면 AI가 스토리를 분석하여 재미있는 3지선다형 퀴즈를 자동으로 만들어줍니다.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
