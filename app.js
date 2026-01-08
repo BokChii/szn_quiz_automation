@@ -89,7 +89,8 @@ function checkBrowserCompatibility() {
     'fetch': typeof fetch !== 'undefined',
     'Promise': typeof Promise !== 'undefined',
     'Array.from': typeof Array.from !== 'undefined',
-    'querySelector': typeof document.querySelector !== 'undefined'
+    'querySelector': typeof document.querySelector !== 'undefined',
+    'Canvas': typeof HTMLCanvasElement !== 'undefined'
   };
 
   const unsupported = Object.entries(features)
@@ -106,12 +107,123 @@ function checkBrowserCompatibility() {
   return true;
 }
 
+// 이미지 압축 및 리사이징 함수
+function compressImage(file, maxWidth = 1920, maxHeight = 1920, quality = 0.8, maxSizeMB = 2) {
+  return new Promise((resolve, reject) => {
+    try {
+      debugLog('COMPRESS', '이미지 압축 시작', { 
+        fileName: file.name, 
+        originalSize: (file.size / 1024 / 1024).toFixed(2) + 'MB',
+        maxWidth,
+        maxHeight,
+        quality
+      });
+
+      const reader = new FileReader();
+      
+      reader.onload = (e) => {
+        const img = new Image();
+        
+        img.onload = () => {
+          try {
+            // 원본 크기
+            let width = img.width;
+            let height = img.height;
+            const originalSize = file.size;
+
+            // 비율 유지하면서 크기 조정
+            if (width > maxWidth || height > maxHeight) {
+              const ratio = Math.min(maxWidth / width, maxHeight / height);
+              width = Math.floor(width * ratio);
+              height = Math.floor(height * ratio);
+              debugLog('COMPRESS', '이미지 크기 조정', { 
+                original: `${img.width}x${img.height}`, 
+                resized: `${width}x${height}` 
+              });
+            }
+
+            // Canvas 생성 및 이미지 그리기
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            
+            // 이미지 품질 향상을 위한 설정
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            
+            // 배경을 흰색으로 설정 (투명도 처리)
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, width, height);
+            
+            // 이미지 그리기
+            ctx.drawImage(img, 0, 0, width, height);
+
+            // 품질 조정하여 압축
+            let currentQuality = quality;
+            let compressedDataUrl = canvas.toDataURL('image/jpeg', currentQuality);
+            let compressedSize = (compressedDataUrl.length * 3) / 4; // base64 크기 추정
+
+            // 목표 크기(2MB) 이하로 압축
+            const targetSize = maxSizeMB * 1024 * 1024;
+            let attempts = 0;
+            const maxAttempts = 10;
+
+            while (compressedSize > targetSize && currentQuality > 0.1 && attempts < maxAttempts) {
+              currentQuality -= 0.1;
+              compressedDataUrl = canvas.toDataURL('image/jpeg', currentQuality);
+              compressedSize = (compressedDataUrl.length * 3) / 4;
+              attempts++;
+              debugLog('COMPRESS', '압축 재시도', { 
+                quality: currentQuality.toFixed(2), 
+                size: (compressedSize / 1024 / 1024).toFixed(2) + 'MB',
+                attempts 
+              });
+            }
+
+            const compressionRatio = ((1 - compressedSize / originalSize) * 100).toFixed(1);
+            debugLog('COMPRESS', '이미지 압축 완료', { 
+              originalSize: (originalSize / 1024 / 1024).toFixed(2) + 'MB',
+              compressedSize: (compressedSize / 1024 / 1024).toFixed(2) + 'MB',
+              compressionRatio: compressionRatio + '%',
+              finalQuality: currentQuality.toFixed(2)
+            });
+
+            resolve(compressedDataUrl);
+          } catch (error) {
+            errorLog('이미지 압축 처리 실패', error);
+            // 압축 실패 시 원본 반환
+            resolve(e.target.result);
+          }
+        };
+
+        img.onerror = (error) => {
+          errorLog('이미지 로드 실패', error);
+          reject(new Error('이미지를 로드할 수 없습니다.'));
+        };
+
+        img.src = e.target.result;
+      };
+
+      reader.onerror = (error) => {
+        errorLog('파일 읽기 실패', error);
+        reject(new Error('파일을 읽을 수 없습니다.'));
+      };
+
+      reader.readAsDataURL(file);
+    } catch (error) {
+      errorLog('이미지 압축 초기화 실패', error);
+      reject(error);
+    }
+  });
+}
+
 // 이미지 업로드 처리
-function handleFileSelect(e) {
+async function handleFileSelect(e) {
   try {
     debugLog('FILE', '파일 선택 이벤트', { fileCount: e.target.files.length });
     const files = Array.from(e.target.files);
-    handleFiles(files);
+    await handleFiles(files);
   } catch (error) {
     errorLog('파일 선택 처리 실패', error);
     showError('파일을 읽는 중 오류가 발생했습니다.');
@@ -156,7 +268,7 @@ if (uploader) {
   });
 
   // 드롭
-  uploader.addEventListener('drop', (e) => {
+  uploader.addEventListener('drop', async (e) => {
     try {
       e.preventDefault();
       e.stopPropagation();
@@ -164,7 +276,7 @@ if (uploader) {
       const files = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('image/'));
       debugLog('DRAG', '파일 드롭', { fileCount: files.length });
       if (files.length > 0) {
-        handleFiles(files);
+        await handleFiles(files);
       } else {
         showError('이미지 파일만 업로드할 수 있습니다.');
       }
@@ -181,12 +293,12 @@ if (uploader) {
       e.stopPropagation();
     });
 
-    uploaderContainer.addEventListener('drop', (e) => {
+    uploaderContainer.addEventListener('drop', async (e) => {
       e.preventDefault();
       e.stopPropagation();
       const files = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('image/'));
       if (files.length > 0) {
-        handleFiles(files);
+        await handleFiles(files);
       }
     });
   }
@@ -196,7 +308,7 @@ if (uploader) {
   errorLog('업로더 요소를 찾을 수 없습니다', null);
 }
 
-function handleFiles(files) {
+async function handleFiles(files) {
   if (!files || files.length === 0) {
     debugLog('FILE', '처리할 파일이 없습니다');
     return;
@@ -206,60 +318,104 @@ function handleFiles(files) {
   let processedCount = 0;
   let errorCount = 0;
 
-  files.forEach((file, index) => {
+  // 처리 중 메시지 표시
+  const processingMessage = document.createElement('div');
+  processingMessage.className = 'mt-4 p-3 bg-blue-50 border border-blue-200 rounded-xl text-blue-800 text-sm font-bold text-center';
+  processingMessage.innerHTML = '⏳ 이미지를 압축하고 있습니다...';
+  const imagePreviewContainer = document.getElementById('image-preview');
+  if (imagePreviewContainer && imagePreviewContainer.parentNode) {
+    imagePreviewContainer.parentNode.insertBefore(processingMessage, imagePreviewContainer);
+  }
+
+  // 파일들을 순차적으로 처리
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    
     try {
       // 파일 타입 검증
       if (!file.type.startsWith('image/')) {
         debugLog('FILE', '이미지가 아닌 파일 건너뜀', { fileName: file.name, type: file.type });
         errorCount++;
-        return;
+        continue;
       }
 
-      // 파일 크기 검증 (10MB 제한)
-      const maxSize = 10 * 1024 * 1024; // 10MB
+      // 파일 크기 검증 (50MB 제한 - 압축 후 처리 가능)
+      const maxSize = 50 * 1024 * 1024; // 50MB
       if (file.size > maxSize) {
         debugLog('FILE', '파일 크기 초과', { fileName: file.name, size: file.size });
         errorCount++;
-        showError(`${file.name} 파일이 너무 큽니다. (최대 10MB)`);
-        return;
+        showError(`${file.name} 파일이 너무 큽니다. (최대 50MB)`);
+        continue;
       }
 
-      const reader = new FileReader();
-      
-      reader.onload = (event) => {
+      // 이미지 압축 (원본이 1MB 이상이거나 너무 큰 경우)
+      const shouldCompress = file.size > 1024 * 1024; // 1MB 이상
+      let base64;
+
+      if (shouldCompress) {
         try {
-          const base64 = event.target.result;
-          if (!base64) {
-            throw new Error('파일 읽기 결과가 없습니다');
-          }
-          
-          images.push(base64);
-          processedCount++;
-          debugLog('FILE', '이미지 로드 완료', { index: processedCount, total: files.length });
-          
-          renderImagePreview();
-          updateGenerateButton();
-        } catch (error) {
-          errorLog('이미지 처리 실패', error);
-          errorCount++;
+          base64 = await compressImage(file, 1920, 1920, 0.8, 2);
+          debugLog('FILE', '이미지 압축 완료', { fileName: file.name });
+        } catch (compressError) {
+          errorLog('이미지 압축 실패, 원본 사용', compressError);
+          // 압축 실패 시 원본 사용
+          const reader = new FileReader();
+          base64 = await new Promise((resolve, reject) => {
+            reader.onload = (e) => resolve(e.target.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
         }
-      };
+      } else {
+        // 작은 파일은 그대로 사용
+        const reader = new FileReader();
+        base64 = await new Promise((resolve, reject) => {
+          reader.onload = (e) => resolve(e.target.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      }
 
-      reader.onerror = (error) => {
-        errorLog('파일 읽기 오류', error);
-        errorCount++;
-        showError(`${file.name} 파일을 읽는 중 오류가 발생했습니다.`);
-      };
+      if (!base64) {
+        throw new Error('파일 읽기 결과가 없습니다');
+      }
 
-      reader.readAsDataURL(file);
+      images.push(base64);
+      processedCount++;
+      debugLog('FILE', '이미지 로드 완료', { 
+        index: processedCount, 
+        total: files.length,
+        fileName: file.name
+      });
+
+      // 진행 상황 업데이트
+      if (processingMessage) {
+        processingMessage.innerHTML = `⏳ 이미지 처리 중... (${processedCount}/${files.length})`;
+      }
+
+      renderImagePreview();
+      updateGenerateButton();
     } catch (error) {
-      errorLog('파일 처리 중 예외 발생', error);
+      errorLog('파일 처리 실패', error);
       errorCount++;
+      showError(`${file.name} 파일을 처리하는 중 오류가 발생했습니다.`);
     }
-  });
+  }
+
+  // 처리 완료 메시지 제거
+  if (processingMessage && processingMessage.parentNode) {
+    processingMessage.remove();
+  }
 
   if (errorCount > 0) {
     debugLog('FILE', '일부 파일 처리 실패', { errorCount, total: files.length });
+    if (processedCount === 0) {
+      showError('모든 파일 처리에 실패했습니다. 파일 형식과 크기를 확인해주세요.');
+    } else {
+      showError(`${errorCount}개의 파일 처리에 실패했습니다.`);
+    }
+  } else if (processedCount > 0) {
+    debugLog('FILE', '모든 파일 처리 완료', { processedCount });
   }
 }
 
