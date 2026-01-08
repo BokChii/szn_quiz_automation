@@ -243,8 +243,13 @@ const uploader = document.querySelector('#image-uploader label');
 const uploaderContainer = document.querySelector('#image-uploader');
 
 if (uploader) {
-  // label에 for="file-input" 속성이 있어서 HTML 기본 동작으로 파일 선택 창이 열립니다.
-  // 추가 클릭 이벤트 리스너는 필요 없습니다.
+  // label 클릭 시 파일 선택 창 열기 (추가 보장)
+  uploader.addEventListener('click', (e) => {
+    if (fileInput && e.target.tagName !== 'INPUT') {
+      fileInput.click();
+      debugLog('CLICK', '파일 선택 창 열기');
+    }
+  });
 
   // 드래그 오버
   uploader.addEventListener('dragover', (e) => {
