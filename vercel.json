@@ -3,6 +3,9 @@
   "buildCommand": "npm run build",
   "outputDirectory": ".",
   "framework": null,
+  "installCommand": null,
+  "cleanUrls": true,
+  "trailingSlash": false,
   "rewrites": [
     {
       "source": "/(.*)",

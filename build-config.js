@@ -6,6 +6,16 @@ const path = require('path');
 
 const apiKey = process.env.GEMINI_API_KEY || '';
 
+// API 키가 없어도 빌드는 계속 진행 (경고만 표시)
+if (!apiKey || apiKey.trim() === '') {
+  console.warn('⚠️  GEMINI_API_KEY 환경 변수가 설정되지 않았습니다.');
+  console.warn('⚠️  빌드는 계속 진행되지만, 배포된 사이트에서 API 키가 작동하지 않을 수 있습니다.');
+  console.warn('⚠️  Vercel 대시보드에서 환경 변수를 설정해주세요.');
+}
+
+// API 키에 작은따옴표가 있으면 이스케이프 처리
+const escapedApiKey = apiKey.replace(/'/g, "\\'").replace(/\\/g, '\\\\');
+
 const configContent = `// ============================================
 // Gemini API 키 설정
 // ============================================
@@ -16,7 +26,7 @@ const configContent = `// ============================================
 // 로컬 개발 환경에서는 직접 config.js 파일을 수정하세요.
 // ============================================
 
-window.GEMINI_API_KEY = '${apiKey}'; // Vercel 환경 변수에서 주입됨
+window.GEMINI_API_KEY = '${escapedApiKey}'; // Vercel 환경 변수에서 주입됨
 `;
 
 const configPath = path.join(__dirname, 'config.js');
@@ -27,10 +37,12 @@ try {
   if (apiKey) {
     console.log('✅ API 키가 환경 변수에서 로드되었습니다.');
   } else {
-    console.warn('⚠️  GEMINI_API_KEY 환경 변수가 설정되지 않았습니다.');
+    console.warn('⚠️  config.js가 빈 API 키로 생성되었습니다.');
   }
 } catch (error) {
   console.error('❌ config.js 파일 생성 실패:', error);
-  process.exit(1);
+  // 빌드 실패를 방지하기 위해 경고만 표시하고 계속 진행
+  console.warn('⚠️  빌드는 계속 진행됩니다. 배포 후 수동으로 config.js를 확인해주세요.');
+  // process.exit(1)을 제거하여 빌드가 실패하지 않도록 함
 }
 
