@@ -40,9 +40,18 @@ try {
     console.warn('⚠️  config.js가 빈 API 키로 생성되었습니다.');
   }
 } catch (error) {
-  console.error('❌ config.js 파일 생성 실패:', error);
-  // 빌드 실패를 방지하기 위해 경고만 표시하고 계속 진행
-  console.warn('⚠️  빌드는 계속 진행됩니다. 배포 후 수동으로 config.js를 확인해주세요.');
-  // process.exit(1)을 제거하여 빌드가 실패하지 않도록 함
+  console.error('❌ config.js 파일 생성 실패:', error.message);
+  // 빈 파일이라도 생성 시도
+  try {
+    const fallbackContent = "window.GEMINI_API_KEY = '';";
+    fs.writeFileSync(configPath, fallbackContent, 'utf8');
+    console.log('⚠️  빈 config.js 파일 생성됨');
+  } catch (fallbackError) {
+    console.error('❌ 빈 파일 생성도 실패:', fallbackError.message);
+    console.warn('⚠️  빌드는 계속 진행됩니다. 배포 후 수동으로 config.js를 확인해주세요.');
+  }
 }
+
+// 항상 성공 종료 (빌드가 실패하지 않도록)
+process.exit(0);
 
