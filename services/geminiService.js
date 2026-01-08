@@ -1,25 +1,9 @@
-// 디버깅 모드 (개발 시 true, 프로덕션에서는 false)
-const DEBUG_MODE = true;
-
-// 디버깅 로그 함수
-function debugLog(category, message, data = null) {
-  if (DEBUG_MODE) {
-    const timestamp = new Date().toISOString();
-    const logMessage = `[${timestamp}] [GEMINI:${category}] ${message}`;
-    console.log(logMessage, data || '');
-  }
-}
-
-// 오류 로그 함수
-function errorLog(message, error) {
-  const timestamp = new Date().toISOString();
-  console.error(`[${timestamp}] [GEMINI:ERROR] ${message}`, error);
-}
-
 // Gemini API 서비스
+// 주의: DEBUG_MODE, debugLog, errorLog는 app.js에서 이미 선언되어 있습니다.
+// 이 파일에서는 전역 함수를 사용하며, 로그 카테고리에는 'GEMINI:' 접두사를 추가합니다.
 async function generateWebtoonQuiz(images, questionCount) {
   const startTime = Date.now();
-  debugLog('API', '퀴즈 생성 요청 시작', { 
+  debugLog('GEMINI:API', '퀴즈 생성 요청 시작', { 
     imageCount: images.length, 
     questionCount 
   });
@@ -40,7 +24,7 @@ async function generateWebtoonQuiz(images, questionCount) {
       throw error;
     }
 
-    debugLog('API', 'API 키 검증 완료');
+    debugLog('GEMINI:API', 'API 키 검증 완료');
 
     // 이미지 검증
     if (!Array.isArray(images) || images.length === 0) {
@@ -55,7 +39,7 @@ async function generateWebtoonQuiz(images, questionCount) {
       throw error;
     }
 
-    debugLog('API', '이미지 검증 완료', { count: images.length });
+    debugLog('GEMINI:API', '이미지 검증 완료', { count: images.length });
 
     // 문제 수 검증
     if (typeof questionCount !== 'number' || questionCount < 3 || questionCount > 10) {
@@ -89,7 +73,7 @@ async function generateWebtoonQuiz(images, questionCount) {
           },
         });
 
-        debugLog('IMAGE', `이미지 ${i + 1} 처리 완료`, { 
+        debugLog('GEMINI:IMAGE', `이미지 ${i + 1} 처리 완료`, { 
           dataLength: data.length 
         });
       } catch (error) {
@@ -98,7 +82,7 @@ async function generateWebtoonQuiz(images, questionCount) {
       }
     }
 
-    debugLog('API', '이미지 변환 완료', { count: imageParts.length });
+    debugLog('GEMINI:API', '이미지 변환 완료', { count: imageParts.length });
 
     const prompt = `
     제공된 웹툰 스크린샷을 분석해주세요.
@@ -111,7 +95,7 @@ async function generateWebtoonQuiz(images, questionCount) {
     7. correctIndex는 0, 1, 2 중 하나의 정수여야 합니다.
   `;
 
-    debugLog('API', 'API 요청 준비 완료', { 
+    debugLog('GEMINI:API', 'API 요청 준비 완료', { 
       model, 
       imageCount: imageParts.length,
       promptLength: prompt.length 
@@ -153,7 +137,7 @@ async function generateWebtoonQuiz(images, questionCount) {
       }
     };
 
-    debugLog('API', 'API 요청 전송', { 
+    debugLog('GEMINI:API', 'API 요청 전송', { 
       url: `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
       bodySize: JSON.stringify(requestBody).length 
     });
@@ -170,7 +154,7 @@ async function generateWebtoonQuiz(images, questionCount) {
     );
 
     const responseTime = Date.now() - startTime;
-    debugLog('API', 'API 응답 수신', { 
+    debugLog('GEMINI:API', 'API 응답 수신', { 
       status: response.status, 
       statusText: response.statusText,
       duration: `${responseTime}ms`
@@ -181,7 +165,7 @@ async function generateWebtoonQuiz(images, questionCount) {
       try {
         errorData = await response.json();
       } catch (e) {
-        debugLog('API', '오류 응답 파싱 실패', e);
+        debugLog('GEMINI:API', '오류 응답 파싱 실패', e);
       }
 
       const errorMessage = errorData.error?.message || `API 요청 실패: ${response.status} ${response.statusText}`;
@@ -224,14 +208,14 @@ async function generateWebtoonQuiz(images, questionCount) {
       throw new Error("AI 응답이 없습니다. 다시 시도해주세요.");
     }
 
-    debugLog('API', '응답 텍스트 추출 완료', { 
+    debugLog('GEMINI:API', '응답 텍스트 추출 완료', { 
       textLength: responseText.length 
     });
 
     let parsed;
     try {
       parsed = JSON.parse(responseText);
-      debugLog('API', '응답 JSON 파싱 완료');
+      debugLog('GEMINI:API', '응답 JSON 파싱 완료');
     } catch (error) {
       errorLog('응답 JSON 파싱 실패', { error, responseText: responseText.substring(0, 200) });
       throw new Error('AI 응답 형식이 올바르지 않습니다. 다시 시도해주세요.');
@@ -243,7 +227,7 @@ async function generateWebtoonQuiz(images, questionCount) {
     }
 
     if (parsed.quiz.length !== questionCount) {
-      debugLog('API', '요청한 문제 수와 다름', { 
+      debugLog('GEMINI:API', '요청한 문제 수와 다름', { 
         requested: questionCount, 
         received: parsed.quiz.length 
       });
@@ -285,7 +269,7 @@ async function generateWebtoonQuiz(images, questionCount) {
     }
 
     const totalTime = Date.now() - startTime;
-    debugLog('API', '퀴즈 생성 완료', { 
+    debugLog('GEMINI:API', '퀴즈 생성 완료', { 
       questionCount: parsed.quiz.length,
       totalDuration: `${totalTime}ms`
     });
