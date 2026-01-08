@@ -126,14 +126,24 @@
       };
       document.head.appendChild(script);
     } else {
-      // 프로덕션 환경: 서버리스 함수에서 API 키 로드
-      const script = document.createElement('script');
-      script.src = '/api/config';
-      script.onerror = function() {
-        console.error('API 키를 로드할 수 없습니다. Vercel 환경 변수에 GEMINI_API_KEY를 설정해주세요.');
-        window.GEMINI_API_KEY = '';
-      };
-      document.head.appendChild(script);
+      // 프로덕션 환경: fetch를 사용하여 API 키 로드
+      fetch('/api/config')
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('API 키를 가져올 수 없습니다.');
+          }
+          return response.json();
+        })
+        .then(data => {
+          window.GEMINI_API_KEY = data.apiKey || '';
+          if (!window.GEMINI_API_KEY) {
+            console.error('API 키를 로드할 수 없습니다. Vercel 환경 변수에 GEMINI_API_KEY를 설정해주세요.');
+          }
+        })
+        .catch(error => {
+          console.error('API 키를 로드할 수 없습니다:', error);
+          window.GEMINI_API_KEY = '';
+        });
     }
   </script>
   <script src="services/geminiService.js"></script>
