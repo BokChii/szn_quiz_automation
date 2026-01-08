@@ -1,9 +1,9 @@
 {
   "version": 2,
-  "buildCommand": "npm run build",
+  "buildCommand": "node build-config.js",
   "outputDirectory": ".",
   "framework": null,
-  "installCommand": null,
+  "installCommand": "echo 'Skipping npm install - static site with no dependencies'",
   "cleanUrls": true,
   "trailingSlash": false,
   "rewrites": [
