@@ -24,11 +24,25 @@
 
 ### 1. API 키 설정
 
+#### 로컬 개발 환경
+
 `config.js` 파일을 열고 Gemini API 키를 설정하세요:
 
 ```javascript
 window.GEMINI_API_KEY = '여기에_API_키_입력';
 ```
+
+#### Vercel 배포 환경
+
+1. Vercel 대시보드에서 프로젝트 선택
+2. **Settings** → **Environment Variables** 이동
+3. 다음 환경 변수 추가:
+   - **Name**: `GEMINI_API_KEY`
+   - **Value**: Gemini API 키
+   - **Environment**: Production, Preview, Development 모두 선택
+4. 저장 후 재배포
+
+빌드 시 자동으로 `config.js` 파일이 생성됩니다.
 
 ### 2. 로컬 서버 실행
 
@@ -64,6 +78,8 @@ webtoon_quiz_master/
 ├── styles.css          # CSS 스타일
 ├── app.js              # 메인 애플리케이션 로직
 ├── config.js           # API 키 설정 (Git에 커밋하지 마세요!)
+├── build-config.js     # Vercel 빌드 시 config.js 생성 스크립트
+├── vercel.json         # Vercel 배포 설정
 ├── services/
 │   └── geminiService.js # Gemini API 서비스
 └── README.md
@@ -74,6 +90,7 @@ webtoon_quiz_master/
 - `config.js` 파일에는 API 키가 포함되므로 Git에 커밋하지 마세요.
 - `.gitignore` 파일에 `config.js`가 포함되어 있습니다.
 - Gemini API 사용 시 API 키가 필요합니다.
+- Vercel 배포 시 환경 변수 `GEMINI_API_KEY`를 반드시 설정하세요.
 
 ## 사용 방법
 
