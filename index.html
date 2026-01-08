@@ -111,7 +111,31 @@
     </footer>
   </div>
 
-  <script src="config.js"></script>
+  <!-- API 키 로드: 로컬에서는 config.js, 프로덕션에서는 서버리스 함수 -->
+  <script>
+    // 환경 감지: 로컬 개발 환경인지 확인
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    
+    if (isLocal) {
+      // 로컬 개발 환경: config.js 파일 로드
+      const script = document.createElement('script');
+      script.src = 'config.js';
+      script.onerror = function() {
+        console.warn('config.js 파일을 찾을 수 없습니다. 로컬에서는 config.js 파일이 필요합니다.');
+        window.GEMINI_API_KEY = '';
+      };
+      document.head.appendChild(script);
+    } else {
+      // 프로덕션 환경: 서버리스 함수에서 API 키 로드
+      const script = document.createElement('script');
+      script.src = '/api/config';
+      script.onerror = function() {
+        console.error('API 키를 로드할 수 없습니다. Vercel 환경 변수에 GEMINI_API_KEY를 설정해주세요.');
+        window.GEMINI_API_KEY = '';
+      };
+      document.head.appendChild(script);
+    }
+  </script>
   <script src="services/geminiService.js"></script>
   <script src="app.js"></script>
 </body>
