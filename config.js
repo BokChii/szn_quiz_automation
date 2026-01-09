@@ -14,5 +14,5 @@
 // .gitignore 파일에 config.js가 포함되어 있는지 확인하세요.
 // ============================================
 
-    // window.GEMINI_API_KEY = 'AIzaSyByJzZRPeQjT9gyQc3lCQk-_Zo8b6IErbc'; // 여기에 Gemini API 키를 입력하세요
-window.GEMINI_API_KEY = window.GEMINI_API_KEY || '';''
+// window.GEMINI_API_KEY = 'AIzaSyByJzZRPeQjT9gyQc3lCQk-_Zo8b6IErbc'; // 여기에 Gemini API 키를 입력하세요
+window.GEMINI_API_KEY = window.GEMINI_API_KEY || '';
