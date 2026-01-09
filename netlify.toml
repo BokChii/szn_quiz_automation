@@ -1,0 +1,9 @@
+[build]
+  command = "npm run build"
+  publish = "."
+
+# 환경 변수는 Netlify 대시보드에서 설정하세요:
+# Site settings → Environment variables → Add variable
+# Key: GEMINI_API_KEY
+# Value: (여기에 Gemini API 키 입력)
+

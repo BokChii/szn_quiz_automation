@@ -1,0 +1,17 @@
+{
+  "name": "webtoon-quiz-master",
+  "version": "1.0.0",
+  "description": "웹툰 스크린샷을 업로드하면 AI가 분석하여 재미있는 3지선다형 퀴즈를 자동으로 만들어주는 웹 애플리케이션",
+  "scripts": {
+    "build": "node build.js"
+  },
+  "keywords": [
+    "webtoon",
+    "quiz",
+    "ai",
+    "gemini"
+  ],
+  "author": "",
+  "license": "MIT"
+}
+
