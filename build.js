@@ -19,25 +19,21 @@ if (apiKey) {
   console.log('   Make sure to set GEMINI_API_KEY in Netlify dashboard');
 }
 
-// config.js 스크립트 태그 앞에 인라인 스크립트 추가
-// 이미 존재하는 경우 교체, 없으면 추가
-const inlineScript = `
+// 플레이스홀더를 실제 스크립트로 교체
+const scriptToInject = `
   <script>
     // Netlify 환경 변수에서 API 키 주입 (빌드 타임)
     window.GEMINI_API_KEY = window.GEMINI_API_KEY || '${apiKey}';
-  </script>`;
+  </script>
+  <!-- GEMINI_API_KEY_PLACEHOLDER -->`;
 
-// </body> 태그 바로 앞에 삽입 (다른 스크립트들 앞에)
-// 이미 주입 스크립트가 있는지 확인
-if (html.includes('// Netlify 환경 변수에서 API 키 주입')) {
-  // 기존 스크립트 교체
-  html = html.replace(
-    /<script>\s*\/\/ Netlify 환경 변수에서 API 키 주입[^<]*<\/script>/s,
-    inlineScript.trim()
-  );
+if (html.includes('<!-- GEMINI_API_KEY_PLACEHOLDER -->')) {
+  html = html.replace('<!-- GEMINI_API_KEY_PLACEHOLDER -->', scriptToInject);
+  console.log('✅ API key placeholder found and replaced');
 } else {
-  // 새로 추가 (</body> 태그 바로 앞)
-  html = html.replace('</body>', inlineScript + '\n</body>');
+  // 플레이스홀더가 없으면 </body> 앞에 추가
+  html = html.replace('</body>', scriptToInject + '\n</body>');
+  console.log('✅ API key script injected before </body> (placeholder not found)');
 }
 
 // 수정된 HTML 저장
