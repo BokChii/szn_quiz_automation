@@ -12,6 +12,27 @@ async function generateWebtoonQuiz(images, questionCount) {
     // API 키 검증
     const apiKey = window.GEMINI_API_KEY;
     
+    // API 키 디버깅 로그 추가
+    if (apiKey) {
+      const keyLength = apiKey.length;
+      const maskedKey = keyLength > 8 
+        ? `${apiKey.substring(0, 4)}...${apiKey.substring(keyLength - 4)}` 
+        : '***';
+      debugLog('GEMINI:API', 'API 키 확인', {
+        keyLength: keyLength,
+        maskedKey: maskedKey,
+        keyType: typeof apiKey,
+        isEmpty: apiKey.trim().length === 0,
+        startsWith: apiKey.substring(0, 5) // AIzaS로 시작하는지 확인
+      });
+    } else {
+      debugLog('GEMINI:API', 'API 키 없음', {
+        windowGEMINI_API_KEY: typeof window.GEMINI_API_KEY,
+        isUndefined: window.GEMINI_API_KEY === undefined,
+        isNull: window.GEMINI_API_KEY === null
+      });
+    }
+    
     if (!apiKey) {
       const error = new Error('GEMINI_API_KEY가 설정되지 않았습니다. config.js 파일에서 API 키를 설정해주세요.');
       errorLog('API 키 누락', error);
@@ -137,9 +158,14 @@ async function generateWebtoonQuiz(images, questionCount) {
       }
     };
 
+    // API 키 마스킹된 URL 로그
+    const maskedUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey.substring(0, 4)}...${apiKey.substring(apiKey.length - 4)}`;
+    
     debugLog('GEMINI:API', 'API 요청 전송', { 
       url: `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-      bodySize: JSON.stringify(requestBody).length 
+      maskedUrl: maskedUrl,
+      bodySize: JSON.stringify(requestBody).length,
+      apiKeyLength: apiKey.length
     });
 
     const response = await fetch(
@@ -164,6 +190,15 @@ async function generateWebtoonQuiz(images, questionCount) {
       let errorData = {};
       try {
         errorData = await response.json();
+        // 에러 응답 상세 로그
+        debugLog('GEMINI:API', '에러 응답 상세', {
+          status: response.status,
+          statusText: response.statusText,
+          errorCode: errorData.error?.code,
+          errorMessage: errorData.error?.message,
+          errorStatus: errorData.error?.status,
+          fullError: errorData.error
+        });
       } catch (e) {
         debugLog('GEMINI:API', '오류 응답 파싱 실패', e);
       }
@@ -172,7 +207,12 @@ async function generateWebtoonQuiz(images, questionCount) {
       errorLog('API 요청 실패', {
         status: response.status,
         statusText: response.statusText,
-        error: errorData
+        error: errorData,
+        // API 키 정보 (마스킹)
+        apiKeyInfo: {
+          length: apiKey?.length || 0,
+          masked: apiKey ? `${apiKey.substring(0, 4)}...${apiKey.substring(apiKey.length - 4)}` : 'N/A'
+        }
       });
 
       // 사용자 친화적인 오류 메시지
