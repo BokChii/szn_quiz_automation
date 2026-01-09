@@ -48,7 +48,7 @@ async function generateWebtoonQuiz(images, questionCount) {
       throw error;
     }
 
-    const model = 'gemini-3-pro-preview';
+    const model = 'gemini-3-flash-preview';
     
     // 이미지를 base64에서 데이터 부분만 추출
     const imageParts = [];
