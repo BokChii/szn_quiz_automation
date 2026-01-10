@@ -4,116 +4,175 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>웹툰 퀴즈 마스터</title>
-  <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
   <link rel="stylesheet" href="styles.css">
 </head>
-<body class="bg-slate-50 text-slate-900">
-  <div class="min-h-screen p-4 md:p-8 flex flex-col items-center">
+<body>
+  <div class="app-container">
     <!-- Header -->
-    <header class="max-w-4xl w-full text-center mb-12">
-      <h1 class="webtoon-font text-5xl md:text-6xl text-indigo-600 mb-2 font-bold">
-        웹툰 퀴즈 마스터
-      </h1>
-      <p class="text-slate-500 font-bold text-lg">
-        좋아하는 웹툰 장면을 업로드하고 AI가 만든 퀴즈에 도전하세요!
-      </p>
+    <header class="app-header">
+      <h1 class="webtoon-font">웹툰 퀴즈 마스터</h1>
+      <p class="header-subtitle">좋아하는 웹툰 장면을 업로드하고 AI가 만든 퀴즈에 도전하세요!</p>
     </header>
 
-    <!-- Main Content -->
-    <main class="max-w-2xl w-full">
-      <!-- IDLE State: Image Upload & Settings -->
-      <div id="idle-state" class="bg-white rounded-3xl shadow-xl p-8 border border-slate-100">
-        <h2 class="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-          <span class="w-8 h-8 bg-indigo-600 text-white rounded-full flex items-center justify-center text-sm font-black">1</span>
-          스크린샷 업로드
-        </h2>
-        
-        <div id="image-uploader" class="space-y-4">
-          <div class="flex items-center justify-center w-full">
-            <label for="file-input" class="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-indigo-300 rounded-2xl cursor-pointer bg-indigo-50 hover:bg-indigo-100 transition-colors">
-              <div class="flex flex-col items-center justify-center pt-5 pb-6">
-                <svg class="w-8 h-8 mb-4 text-indigo-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16">
-                  <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"/>
+    <!-- Main Layout: 3 Columns -->
+    <div class="main-layout">
+      <!-- Left Panel: Projects -->
+      <aside class="left-panel">
+        <div class="panel-header">
+          <h2>프로젝트</h2>
+          <button id="new-project-btn" class="icon-btn" title="새 프로젝트">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </button>
+        </div>
+        <div id="project-list" class="project-list">
+          <!-- 프로젝트 목록이 여기에 동적으로 추가됩니다 -->
+        </div>
+      </aside>
+
+      <!-- Center Panel: Main Work Area -->
+      <main class="center-panel">
+        <!-- IDLE State: Image Upload & Settings -->
+        <div id="idle-state" class="state-container">
+          <h2 class="section-title">
+            <span class="step-number">1</span>
+            스크린샷 업로드
+          </h2>
+          
+          <div id="image-uploader" class="image-uploader">
+            <label for="file-input" class="upload-area">
+              <div class="upload-content">
+                <svg class="upload-icon" viewBox="0 0 20 16" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"/>
                 </svg>
-                <p class="mb-2 text-sm text-indigo-700 font-bold">웹툰 스크린샷 업로드</p>
-                <p class="text-xs text-indigo-500">클릭하거나 파일을 이 위로 끌어다 놓으세요 (여러 장 가능)</p>
+                <p class="upload-text">웹툰 스크린샷 업로드</p>
+                <p class="upload-hint">클릭하거나 파일을 이 위로 끌어다 놓으세요 (여러 장 가능)</p>
               </div>
             </label>
             <input type="file" id="file-input" class="hidden" multiple accept="image/*" />
+            <div id="image-preview" class="image-preview"></div>
           </div>
 
-          <div id="image-preview" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-6"></div>
-        </div>
+          <div class="section-divider"></div>
 
-        <div class="mt-10 pt-10 border-t border-slate-100">
-          <h2 class="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-            <span class="w-8 h-8 bg-indigo-600 text-white rounded-full flex items-center justify-center text-sm font-black">2</span>
+          <h2 class="section-title">
+            <span class="step-number">2</span>
             퀴즈 설정
           </h2>
           
-          <div class="flex flex-col gap-2">
-            <label class="text-sm font-bold text-slate-500 uppercase">생성할 문제 수</label>
-            <div class="flex items-center gap-4">
-              <button class="question-count-btn flex-1 py-3 rounded-xl border-2 transition-all font-bold bg-indigo-600 border-indigo-600 text-white" data-count="3">3개</button>
-              <button class="question-count-btn flex-1 py-3 rounded-xl border-2 transition-all font-bold bg-white border-slate-200 text-slate-500 hover:border-indigo-300" data-count="5">5개</button>
-              <button class="question-count-btn flex-1 py-3 rounded-xl border-2 transition-all font-bold bg-white border-slate-200 text-slate-500 hover:border-indigo-300" data-count="7">7개</button>
-              <button class="question-count-btn flex-1 py-3 rounded-xl border-2 transition-all font-bold bg-white border-slate-200 text-slate-500 hover:border-indigo-300" data-count="10">10개</button>
+          <div class="quiz-settings">
+            <label class="settings-label">생성할 문제 수</label>
+            <div class="question-count-buttons">
+              <button class="question-count-btn active" data-count="3">3개</button>
+              <button class="question-count-btn" data-count="5">5개</button>
+              <button class="question-count-btn" data-count="7">7개</button>
+              <button class="question-count-btn" data-count="10">10개</button>
             </div>
           </div>
-        </div>
 
-        <div id="error-message" class="mt-6 p-4 bg-red-50 border border-red-100 rounded-xl text-red-600 text-sm font-bold text-center hidden"></div>
-
-        <button id="generate-btn" class="mt-10 w-full py-5 rounded-2xl font-black text-xl shadow-lg transition-all active:scale-[0.98] bg-slate-200 text-slate-400 cursor-not-allowed">
-          퀴즈 생성하기 ✨
-        </button>
-      </div>
-
-      <!-- PROCESSING State -->
-      <div id="processing-state" class="bg-white rounded-3xl shadow-xl p-12 border border-slate-100 text-center hidden">
-        <div class="relative w-24 h-24 mx-auto mb-8">
-          <div class="absolute inset-0 border-4 border-indigo-100 rounded-full"></div>
-          <div class="absolute inset-0 border-4 border-indigo-600 rounded-full border-t-transparent animate-spin"></div>
-        </div>
-        <h2 class="text-2xl font-bold text-slate-800 mb-3">AI 분석 중...</h2>
-        <p class="text-slate-500 leading-relaxed">
-          Gemini가 스크린샷의 텍스트를 읽고 스토리를 이해하며<br />
-          재미있는 퀴즈를 만들고 있습니다. 잠시만 기다려주세요!
-        </p>
-        <div class="mt-8 space-y-3">
-          <div class="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-            <div class="h-full bg-indigo-500 animate-pulse w-3/4"></div>
+          <div id="project-selector-container" class="project-selector-container">
+            <label class="settings-label">프로젝트 선택</label>
+            <div class="project-selector">
+              <select id="project-select" class="project-select">
+                <option value="">프로젝트를 선택하세요</option>
+              </select>
+              <button id="create-project-btn" class="btn-secondary">새 프로젝트</button>
+            </div>
           </div>
-          <p class="text-xs text-indigo-400 font-bold uppercase tracking-widest animate-pulse">
-            OCR • 문맥 분석 • 문제 출제 중
-          </p>
+
+          <div id="error-message" class="error-message hidden"></div>
+
+          <button id="generate-btn" class="generate-btn" disabled>
+            퀴즈 생성하기 ✨
+          </button>
         </div>
-      </div>
 
-      <!-- QUIZ State -->
-      <div id="quiz-state" class="bg-white rounded-3xl shadow-xl p-8 border border-slate-100 animate-in fade-in slide-in-from-bottom-4 duration-500 hidden"></div>
+        <!-- PROCESSING State -->
+        <div id="processing-state" class="state-container hidden">
+          <div class="loading-spinner"></div>
+          <h2>AI 분석 중...</h2>
+          <p class="loading-text">
+            Gemini가 스크린샷의 텍스트를 읽고 스토리를 이해하며<br />
+            재미있는 퀴즈를 만들고 있습니다. 잠시만 기다려주세요!
+          </p>
+          <div class="loading-progress">
+            <div class="progress-bar"></div>
+            <p class="progress-text">OCR • 문맥 분석 • 문제 출제 중</p>
+          </div>
+        </div>
 
-      <!-- RESULT State -->
-      <div id="result-state" class="bg-white rounded-3xl shadow-2xl p-12 border border-slate-100 text-center animate-in zoom-in duration-500 hidden"></div>
-    </main>
+        <!-- QUIZ State -->
+        <div id="quiz-state" class="state-container hidden"></div>
+
+        <!-- RESULT State -->
+        <div id="result-state" class="state-container hidden"></div>
+
+        <!-- QUIZ LIST State (히스토리에서 선택 시) -->
+        <div id="quiz-list-state" class="state-container hidden">
+          <div class="quiz-list-header">
+            <h2 id="quiz-list-title">퀴즈 목록</h2>
+            <button id="back-to-create-btn" class="btn-secondary">새 퀴즈 만들기</button>
+          </div>
+          <div id="quiz-list-content" class="quiz-list-content">
+            <!-- 퀴즈 목록이 여기에 동적으로 추가됩니다 -->
+          </div>
+        </div>
+      </main>
+
+      <!-- Right Panel: History -->
+      <aside class="right-panel">
+        <div class="panel-header">
+          <h2>히스토리</h2>
+        </div>
+        <div id="history-list" class="history-list">
+          <!-- 히스토리 목록이 여기에 동적으로 추가됩니다 -->
+        </div>
+      </aside>
+    </div>
 
     <!-- Footer -->
-    <footer class="mt-auto py-12 text-slate-400 text-sm flex flex-col items-center gap-4">
-      <div class="flex items-center gap-6 font-medium">
-        <a href="#" class="hover:text-indigo-500 transition-colors">이용 방법</a>
-        <span class="w-1 h-1 bg-slate-300 rounded-full"></span>
-        <a href="#" class="hover:text-indigo-500 transition-colors">개인정보 처리방침</a>
-        <span class="w-1 h-1 bg-slate-300 rounded-full"></span>
-        <a href="#" class="hover:text-indigo-500 transition-colors">문의하기</a>
+    <footer class="app-footer">
+      <div class="footer-links">
+        <a href="#">이용 방법</a>
+        <span class="footer-divider"></span>
+        <a href="#">개인정보 처리방침</a>
+        <span class="footer-divider"></span>
+        <a href="#">문의하기</a>
       </div>
       <p>© 2024 웹툰 퀴즈 마스터 • Powered by Gemini AI</p>
     </footer>
   </div>
 
-  <!-- GEMINI_API_KEY_PLACEHOLDER -->
+  <!-- Modals -->
+  <div id="project-modal" class="modal hidden">
+    <div class="modal-content">
+      <h3 id="project-modal-title">새 프로젝트</h3>
+      <input type="text" id="project-name-input" class="modal-input" placeholder="프로젝트명을 입력하세요" maxlength="50">
+      <div class="modal-actions">
+        <button id="project-modal-cancel" class="btn-secondary">취소</button>
+        <button id="project-modal-confirm" class="btn-primary">확인</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="episode-modal" class="modal hidden">
+    <div class="modal-content">
+      <h3>회차명 입력</h3>
+      <input type="text" id="episode-name-input" class="modal-input" placeholder="예: 1화, 2화, 특별편 등" maxlength="50">
+      <div class="modal-actions">
+        <button id="episode-modal-cancel" class="btn-secondary">취소</button>
+        <button id="episode-modal-confirm" class="btn-primary">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
   <script src="config.js"></script>
+  <script src="services/storageService.js"></script>
   <script src="services/geminiService.js"></script>
   <script src="app.js"></script>
 </body>

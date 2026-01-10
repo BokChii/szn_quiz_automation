@@ -21,7 +21,8 @@ const AppState = {
   IDLE: 'IDLE',
   PROCESSING: 'PROCESSING',
   QUIZ: 'QUIZ',
-  RESULT: 'RESULT'
+  RESULT: 'RESULT',
+  QUIZ_LIST: 'QUIZ_LIST'
 };
 
 // 전역 상태
@@ -30,6 +31,8 @@ let images = [];
 let questionCount = 5;
 let questions = [];
 let finalScore = 0;
+let currentQuizId = null; // 현재 생성 중인 퀴즈 ID
+let currentProjectId = null; // 현재 선택된 프로젝트 ID
 
 // DOM 요소 검증 및 초기화
 function validateDOMElements() {
@@ -427,17 +430,15 @@ function renderImagePreview() {
     images.forEach((src, idx) => {
       try {
         const div = document.createElement('div');
-        div.className = 'relative group rounded-lg overflow-hidden border border-slate-200 shadow-sm';
+        div.className = 'image-preview-item';
         div.innerHTML = `
-          <img src="${src}" alt="Webtoon ${idx + 1}" class="h-40 w-full object-cover" onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'200\' height=\'200\'%3E%3Crect fill=\'%23ddd\' width=\'200\' height=\'200\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\' fill=\'%23999\'%3E이미지 로드 실패%3C/text%3E%3C/svg%3E';" />
+          <img src="${src}" alt="Webtoon ${idx + 1}" onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'200\' height=\'200\'%3E%3Crect fill=\'%23ddd\' width=\'200\' height=\'200\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\' fill=\'%23999\'%3E이미지 로드 실패%3C/text%3E%3C/svg%3E';" />
           <button 
-            class="remove-image-btn absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+            class="remove-btn"
             data-index="${idx}"
             title="삭제"
           >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
+            ×
           </button>
         `;
         imagePreview.appendChild(div);
@@ -447,7 +448,7 @@ function renderImagePreview() {
     });
 
     // 삭제 버튼 이벤트 리스너
-    document.querySelectorAll('.remove-image-btn').forEach(btn => {
+    document.querySelectorAll('.remove-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         try {
           const button = e.target.closest('button');
@@ -490,9 +491,9 @@ questionCountBtns.forEach(btn => {
       
       questionCountBtns.forEach(b => {
         if (parseInt(b.dataset.count) === questionCount) {
-          b.className = 'question-count-btn flex-1 py-3 rounded-xl border-2 transition-all font-bold bg-indigo-600 border-indigo-600 text-white';
+          b.classList.add('active');
         } else {
-          b.className = 'question-count-btn flex-1 py-3 rounded-xl border-2 transition-all font-bold bg-white border-slate-200 text-slate-500 hover:border-indigo-300';
+          b.classList.remove('active');
         }
       });
     } catch (error) {
@@ -532,6 +533,14 @@ generateBtn.addEventListener('click', async () => {
       showError("API 키가 설정되지 않았습니다. config.js 파일을 확인해주세요.");
       return;
     }
+    
+    // 프로젝트 선택 확인
+    const selectedProject = ProjectService.getSelected();
+    if (!selectedProject) {
+      showError("프로젝트를 먼저 선택해주세요.");
+      return;
+    }
+    currentProjectId = selectedProject.id;
     
     hideError();
     setState(AppState.PROCESSING);
@@ -581,6 +590,8 @@ function setState(newState) {
     processingState.classList.add('hidden');
     quizState.classList.add('hidden');
     resultState.classList.add('hidden');
+    const quizListState = document.getElementById('quiz-list-state');
+    if (quizListState) quizListState.classList.add('hidden');
     
     switch (state) {
       case AppState.IDLE:
@@ -596,6 +607,9 @@ function setState(newState) {
       case AppState.RESULT:
         resultState.classList.remove('hidden');
         renderResult();
+        break;
+      case AppState.QUIZ_LIST:
+        if (quizListState) quizListState.classList.remove('hidden');
         break;
       default:
         errorLog('알 수 없는 상태', { state });
@@ -655,36 +669,34 @@ function renderCurrentQuestion() {
     }
     
     quizState.innerHTML = `
-      <div class="mb-8">
-        <div class="flex justify-between items-center mb-2">
-          <span class="text-sm font-bold text-indigo-600 uppercase tracking-wider">
+      <div class="quiz-progress">
+        <div class="quiz-progress-header">
+          <span class="quiz-progress-label">
             문제 ${currentQuestionIndex + 1} / ${questions.length}
           </span>
-          <span class="text-sm font-medium text-slate-400">
+          <span class="quiz-progress-percent">
             진행률 ${Math.round(progress)}%
           </span>
         </div>
-        <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-          <div class="h-full bg-indigo-500 transition-all duration-300" style="width: ${progress}%"></div>
+        <div class="quiz-progress-bar">
+          <div class="quiz-progress-fill" style="width: ${progress}%"></div>
         </div>
       </div>
 
-      <h2 class="text-2xl font-bold text-slate-800 mb-8 leading-tight">
+      <h2 class="quiz-question">
         ${escapeHtml(currentQuestion.question)}
       </h2>
 
-      <div class="space-y-4" id="options-container">
+      <div class="quiz-options" id="options-container">
         ${currentQuestion.options.map((option, idx) => {
-          let buttonClass = "option-btn w-full text-left p-5 rounded-2xl border-2 transition-all duration-200 text-lg font-medium ";
-          if (selectedIdx === null) {
-            buttonClass += "border-slate-100 hover:border-indigo-300 hover:bg-indigo-50 active:bg-indigo-100";
-          } else {
+          let buttonClass = "quiz-option";
+          if (selectedIdx !== null) {
             if (idx === currentQuestion.correctIndex) {
-              buttonClass += "border-green-500 bg-green-50 text-green-700";
+              buttonClass += " correct";
             } else if (idx === selectedIdx) {
-              buttonClass += "border-red-500 bg-red-50 text-red-700";
+              buttonClass += " incorrect";
             } else {
-              buttonClass += "border-slate-50 text-slate-400 opacity-60";
+              buttonClass += " disabled";
             }
           }
           
@@ -694,30 +706,24 @@ function renderCurrentQuestion() {
               data-index="${idx}"
               ${selectedIdx !== null ? 'disabled' : ''}
             >
-              <div class="flex items-center gap-4">
-                <span class="w-8 h-8 flex items-center justify-center rounded-full text-sm shrink-0 border-2 ${
-                  selectedIdx === null ? "border-slate-200" : (idx === currentQuestion.correctIndex ? "border-green-500" : "border-slate-100")
-                }">
-                  ${idx + 1}
-                </span>
-                ${escapeHtml(option)}
-              </div>
+              <span class="quiz-option-number">${idx + 1}</span>
+              <span>${escapeHtml(option)}</span>
             </button>
           `;
         }).join('')}
       </div>
 
       ${showExplanation ? `
-        <div class="mt-8 p-6 bg-slate-50 rounded-2xl border border-slate-200 animate-in slide-in-from-top-2 duration-300">
-          <p class="text-slate-700 leading-relaxed">
-            <span class="font-bold mr-2 ${selectedIdx === currentQuestion.correctIndex ? 'text-green-600' : 'text-red-600'}">
-              ${selectedIdx === currentQuestion.correctIndex ? '정답입니다!' : '아쉽네요!'}
-            </span>
-            <span class="text-indigo-600 font-bold">해설:</span> ${escapeHtml(currentQuestion.explanation)}
+        <div class="quiz-explanation">
+          <p class="quiz-explanation-result ${selectedIdx === currentQuestion.correctIndex ? 'correct' : 'incorrect'}">
+            ${selectedIdx === currentQuestion.correctIndex ? '정답입니다!' : '아쉽네요!'}
+          </p>
+          <p class="quiz-explanation-text">
+            <span class="quiz-explanation-label">해설:</span> ${escapeHtml(currentQuestion.explanation)}
           </p>
           <button
             id="next-question-btn"
-            class="mt-6 w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl shadow-lg shadow-indigo-200 transition-all active:scale-95"
+            class="quiz-next-btn"
           >
             ${currentQuestionIndex === questions.length - 1 ? '결과 확인하기' : '다음 문제로'}
           </button>
@@ -829,83 +835,164 @@ function renderResult() {
       ? "훌륭합니다! 세부적인 내용까지 잘 파악하고 계시네요." 
       : "나쁘지 않아요! 웹툰을 다시 정주행하고 도전해보는 건 어떨까요?";
     
-    // XSS 방지
-    function escapeHtml(text) {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
-    }
-    
     resultState.innerHTML = `
-      <div class="inline-block p-4 bg-yellow-100 rounded-full mb-6">
-        <svg class="w-12 h-12 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
-          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-        </svg>
-      </div>
-      
-      <h2 class="text-4xl font-black text-slate-800 mb-2">퀴즈 종료!</h2>
-      <div class="my-8">
-        <div class="text-7xl font-black text-indigo-600 mb-2">
-          ${finalScore} / ${questions.length}
+      <div class="result-container">
+        <div class="result-icon">
+          <svg fill="currentColor" viewBox="0 0 20 20">
+            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+          </svg>
         </div>
-        <p class="text-slate-400 font-bold uppercase tracking-widest">최종 점수</p>
-      </div>
+        
+        <h2 class="result-title">퀴즈 종료!</h2>
+        <div class="result-score">
+          <div class="result-score-number">
+            ${finalScore} / ${questions.length}
+          </div>
+          <p class="result-score-label">최종 점수</p>
+        </div>
 
-      <p class="text-slate-600 mb-10 text-lg font-medium">
-        ${escapeHtml(scoreText)}
-      </p>
+        <p class="result-message">
+          ${escapeHtml(scoreText)}
+        </p>
 
-      <div class="flex flex-col sm:flex-row gap-4">
-        <button
-          id="retry-btn"
-          class="flex-1 py-4 bg-white border-2 border-slate-200 text-slate-600 font-bold rounded-2xl hover:bg-slate-50 transition-all"
-        >
-          다시 시도
-        </button>
-        <button
-          id="new-quiz-btn"
-          class="flex-1 py-4 bg-indigo-600 text-white font-bold rounded-2xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all"
-        >
-          새로운 퀴즈 만들기
-        </button>
+        ${!currentQuizId ? `
+          <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f1f5f9; border-radius: 0.75rem; border: 2px solid #e2e8f0;">
+            <p style="font-size: 0.875rem; color: #64748b; margin-bottom: 0.75rem; font-weight: 600;">퀴즈를 저장하려면 회차명을 입력하세요</p>
+            <button
+              id="save-quiz-btn"
+              class="btn-primary"
+              style="width: 100%;"
+            >
+              회차명 입력 및 저장
+            </button>
+          </div>
+        ` : ''}
+
+        <div class="result-actions">
+          <button id="retry-btn" class="btn-secondary">
+            다시 시도
+          </button>
+          <button id="new-quiz-btn" class="btn-primary">
+            새로운 퀴즈 만들기
+          </button>
+        </div>
       </div>
     `;
     
     const retryBtn = document.getElementById('retry-btn');
     const newQuizBtn = document.getElementById('new-quiz-btn');
+    const saveQuizBtn = document.getElementById('save-quiz-btn');
     
     if (retryBtn) {
       retryBtn.addEventListener('click', () => {
         debugLog('RESULT', '다시 시도 클릭');
         setState(AppState.QUIZ);
       });
-    } else {
-      errorLog('다시 시도 버튼을 찾을 수 없습니다', null);
     }
     
     if (newQuizBtn) {
       newQuizBtn.addEventListener('click', () => {
         debugLog('RESULT', '새로운 퀴즈 만들기 클릭');
-        images = [];
-        questions = [];
-        questionCount = 5;
-        renderImagePreview();
-        updateGenerateButton();
-        questionCountBtns.forEach((btn, idx) => {
-          if (idx === 1) { // 5개가 기본값
-            btn.className = 'question-count-btn flex-1 py-3 rounded-xl border-2 transition-all font-bold bg-indigo-600 border-indigo-600 text-white';
-          } else {
-            btn.className = 'question-count-btn flex-1 py-3 rounded-xl border-2 transition-all font-bold bg-white border-slate-200 text-slate-500 hover:border-indigo-300';
-          }
-        });
+        resetQuiz();
         setState(AppState.IDLE);
       });
-    } else {
-      errorLog('새로운 퀴즈 만들기 버튼을 찾을 수 없습니다', null);
+    }
+    
+    if (saveQuizBtn) {
+      saveQuizBtn.addEventListener('click', () => {
+        // 프로젝트가 선택되어 있는지 확인
+        const selectedProject = ProjectService.getSelected();
+        if (!selectedProject) {
+          showError('프로젝트를 먼저 선택해주세요.');
+          return;
+        }
+        // 회차명 입력 모달 열기
+        openEpisodeModalForSave();
+      });
     }
   } catch (error) {
     errorLog('결과 화면 렌더링 실패', error);
     showError('결과를 표시하는 중 오류가 발생했습니다.');
+  }
+}
+
+function resetQuiz() {
+  images = [];
+  questions = [];
+  questionCount = 5;
+  currentQuizId = null;
+  renderImagePreview();
+  updateGenerateButton();
+  questionCountBtns.forEach((btn, idx) => {
+    if (idx === 1) { // 5개가 기본값
+      btn.classList.add('active');
+      btn.classList.remove('active');
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+}
+
+function openEpisodeModalForSave() {
+  const modal = document.getElementById('episode-modal');
+  const input = document.getElementById('episode-name-input');
+  
+  if (!modal || !input) return;
+  
+  currentEditingQuiz = null; // 새로 저장할 퀴즈
+  input.value = '';
+  input.focus();
+  modal.classList.remove('hidden');
+  
+  // 모달 확인 버튼 이벤트를 임시로 변경
+  const confirmBtn = document.getElementById('episode-modal-confirm');
+  if (confirmBtn) {
+    const originalHandler = confirmBtn.onclick;
+    confirmBtn.onclick = () => {
+      handleSaveQuiz();
+    };
+  }
+}
+
+function handleSaveQuiz() {
+  const input = document.getElementById('episode-name-input');
+  if (!input) return;
+  
+  const episodeName = input.value.trim();
+  if (!episodeName) {
+    showError('회차명을 입력해주세요.');
+    return;
+  }
+  
+  const selectedProject = ProjectService.getSelected();
+  if (!selectedProject) {
+    showError('프로젝트를 선택해주세요.');
+    return;
+  }
+  
+  if (questions.length === 0) {
+    showError('저장할 퀴즈가 없습니다.');
+    return;
+  }
+  
+  try {
+    const quiz = QuizService.create(selectedProject.id, episodeName, questions);
+    currentQuizId = quiz.id;
+    
+    // 점수 저장
+    QuizService.update(quiz.id, { score: finalScore });
+    
+    renderHistoryList();
+    closeEpisodeModal();
+    
+    // 결과 화면 다시 렌더링 (저장 버튼 제거)
+    renderResult();
+    
+    debugLog('QUIZ', '퀴즈 저장 완료', { quizId: quiz.id, episodeName });
+  } catch (error) {
+    errorLog('퀴즈 저장 실패', error);
+    showError(error.message || '퀴즈 저장에 실패했습니다.');
   }
 }
 
@@ -955,8 +1042,8 @@ try {
     // API 키 확인
     if (!window.GEMINI_API_KEY || window.GEMINI_API_KEY.trim() === '') {
       const apiKeyWarning = document.createElement('div');
-      apiKeyWarning.className = 'mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-xl text-yellow-800 text-sm font-bold text-center';
-      apiKeyWarning.innerHTML = '⚠️ API 키가 설정되지 않았습니다. <code class="bg-yellow-100 px-2 py-1 rounded">config.js</code> 파일에서 Gemini API 키를 설정해주세요.';
+      apiKeyWarning.style.cssText = 'margin-top: 1rem; padding: 1rem; background: #fef3c7; border: 1px solid #fde68a; border-radius: 0.75rem; color: #92400e; font-size: 0.875rem; font-weight: 700; text-align: center;';
+      apiKeyWarning.innerHTML = '⚠️ API 키가 설정되지 않았습니다. <code style="background: #fef9c3; padding: 0.25rem 0.5rem; border-radius: 0.25rem;">config.js</code> 파일에서 Gemini API 키를 설정해주세요.';
       const idleStateContent = document.querySelector('#idle-state');
       if (idleStateContent && !document.querySelector('.api-key-warning')) {
         apiKeyWarning.classList.add('api-key-warning');
@@ -968,9 +1055,564 @@ try {
     }
 
     updateGenerateButton();
+    
+    // 새로운 기능 초기화
+    initProjectManagement();
+    initHistoryManagement();
+    initExcelExport();
+    initModals();
+    
     debugLog('INIT', '앱 초기화 완료');
   }
 } catch (error) {
   errorLog('앱 초기화 중 오류 발생', error);
   showError('앱을 초기화하는 중 오류가 발생했습니다. 페이지를 새로고침해주세요.');
+}
+
+// ============================================
+// 프로젝트 관리 기능
+// ============================================
+
+function initProjectManagement() {
+  const projectList = document.getElementById('project-list');
+  const newProjectBtn = document.getElementById('new-project-btn');
+  const projectSelect = document.getElementById('project-select');
+  const createProjectBtn = document.getElementById('create-project-btn');
+  
+  if (!projectList || !newProjectBtn) return;
+  
+  // 프로젝트 목록 렌더링
+  renderProjectList();
+  renderProjectSelect();
+  
+  // 새 프로젝트 버튼
+  newProjectBtn.addEventListener('click', () => {
+    openProjectModal();
+  });
+  
+  // 프로젝트 선택 드롭다운
+  if (projectSelect) {
+    projectSelect.addEventListener('change', (e) => {
+      const projectId = e.target.value;
+      if (projectId) {
+        ProjectService.select(projectId);
+        currentProjectId = projectId;
+        renderProjectList();
+        debugLog('PROJECT', '프로젝트 선택', { projectId });
+      }
+    });
+  }
+  
+  // 프로젝트 생성 버튼 (중앙 패널)
+  if (createProjectBtn) {
+    createProjectBtn.addEventListener('click', () => {
+      openProjectModal();
+    });
+  }
+  
+  // 초기 선택된 프로젝트 로드
+  const selectedProject = ProjectService.getSelected();
+  if (selectedProject) {
+    currentProjectId = selectedProject.id;
+    if (projectSelect) {
+      projectSelect.value = selectedProject.id;
+    }
+  }
+}
+
+function renderProjectList() {
+  const projectList = document.getElementById('project-list');
+  if (!projectList) return;
+  
+  const projects = ProjectService.getAll();
+  const selectedProject = ProjectService.getSelected();
+  
+  if (projects.length === 0) {
+    projectList.innerHTML = '<p style="color: #94a3b8; font-size: 0.875rem; text-align: center; padding: 1rem;">프로젝트가 없습니다</p>';
+    return;
+  }
+  
+  projectList.innerHTML = projects.map(project => {
+    const isActive = selectedProject && project.id === selectedProject.id;
+    const quizCount = QuizService.getAll(project.id).length;
+    
+    return `
+      <div class="project-item ${isActive ? 'active' : ''}" data-project-id="${project.id}">
+        <span class="project-item-name" title="${project.name}">${escapeHtml(project.name)}</span>
+        <div class="project-item-actions">
+          <button class="project-item-btn edit-project-btn" data-project-id="${project.id}" title="이름 변경">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+            </svg>
+          </button>
+          <button class="project-item-btn delete-project-btn" data-project-id="${project.id}" title="삭제">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  // 프로젝트 선택 이벤트
+  projectList.querySelectorAll('.project-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      if (e.target.closest('.project-item-btn')) return;
+      const projectId = item.dataset.projectId;
+      ProjectService.select(projectId);
+      currentProjectId = projectId;
+      if (document.getElementById('project-select')) {
+        document.getElementById('project-select').value = projectId;
+      }
+      renderProjectList();
+      renderHistoryList();
+      debugLog('PROJECT', '프로젝트 선택', { projectId });
+    });
+  });
+  
+  // 프로젝트 편집 버튼
+  projectList.querySelectorAll('.edit-project-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const projectId = btn.dataset.projectId;
+      const project = ProjectService.getAll().find(p => p.id === projectId);
+      if (project) {
+        openProjectModal(project);
+      }
+    });
+  });
+  
+  // 프로젝트 삭제 버튼
+  projectList.querySelectorAll('.delete-project-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const projectId = btn.dataset.projectId;
+      if (confirm('프로젝트를 삭제하시겠습니까? 해당 프로젝트의 모든 퀴즈도 함께 삭제됩니다.')) {
+        try {
+          ProjectService.delete(projectId);
+          if (currentProjectId === projectId) {
+            currentProjectId = null;
+            const selected = ProjectService.getSelected();
+            if (selected) {
+              currentProjectId = selected.id;
+            }
+          }
+          renderProjectList();
+          renderProjectSelect();
+          renderHistoryList();
+          debugLog('PROJECT', '프로젝트 삭제', { projectId });
+        } catch (error) {
+          errorLog('프로젝트 삭제 실패', error);
+          showError('프로젝트 삭제에 실패했습니다.');
+        }
+      }
+    });
+  });
+}
+
+function renderProjectSelect() {
+  const projectSelect = document.getElementById('project-select');
+  if (!projectSelect) return;
+  
+  const projects = ProjectService.getAll();
+  const selectedProject = ProjectService.getSelected();
+  
+  projectSelect.innerHTML = '<option value="">프로젝트를 선택하세요</option>' +
+    projects.map(project => 
+      `<option value="${project.id}" ${selectedProject && project.id === selectedProject.id ? 'selected' : ''}>${escapeHtml(project.name)}</option>`
+    ).join('');
+}
+
+// ============================================
+// 히스토리 관리 기능
+// ============================================
+
+function initHistoryManagement() {
+  renderHistoryList();
+}
+
+function renderHistoryList() {
+  const historyList = document.getElementById('history-list');
+  if (!historyList) return;
+  
+  const selectedProject = ProjectService.getSelected();
+  const quizzes = QuizService.getAll(selectedProject ? selectedProject.id : null);
+  
+  if (quizzes.length === 0) {
+    historyList.innerHTML = '<p style="color: #94a3b8; font-size: 0.875rem; text-align: center; padding: 1rem;">히스토리가 없습니다</p>';
+    return;
+  }
+  
+  historyList.innerHTML = quizzes.map(quiz => {
+    const project = ProjectService.getAll().find(p => p.id === quiz.projectId);
+    const date = new Date(quiz.createdAt);
+    const dateStr = date.toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' });
+    const timeStr = date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+    
+    return `
+      <div class="history-item" data-quiz-id="${quiz.id}">
+        <div class="history-item-header">
+          <div class="history-item-title">${escapeHtml(quiz.episodeName)}</div>
+          <div class="history-item-actions">
+            <button class="history-item-btn edit-episode-btn" data-quiz-id="${quiz.id}" title="회차명 수정">✏️</button>
+            <button class="history-item-btn download-excel-btn" data-quiz-id="${quiz.id}" title="엑셀 다운로드">📥</button>
+          </div>
+        </div>
+        <div class="history-item-meta">
+          <span>${project ? escapeHtml(project.name) : '프로젝트 없음'}</span>
+          <span>•</span>
+          <span>${quiz.questionCount}문제</span>
+          <span>•</span>
+          <span>${dateStr} ${timeStr}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  // 히스토리 항목 클릭
+  historyList.querySelectorAll('.history-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      if (e.target.closest('.history-item-btn')) return;
+      const quizId = item.dataset.quizId;
+      showQuizList(quizId);
+    });
+  });
+  
+  // 회차명 수정 버튼
+  historyList.querySelectorAll('.edit-episode-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const quizId = btn.dataset.quizId;
+      const quiz = QuizService.getById(quizId);
+      if (quiz) {
+        openEpisodeModal(quiz);
+      }
+    });
+  });
+  
+  // 엑셀 다운로드 버튼
+  historyList.querySelectorAll('.download-excel-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const quizId = btn.dataset.quizId;
+      downloadQuizExcel(quizId);
+    });
+  });
+}
+
+function showQuizList(quizId) {
+  const quiz = QuizService.getById(quizId);
+  if (!quiz) {
+    showError('퀴즈를 찾을 수 없습니다.');
+    return;
+  }
+  
+  const quizListState = document.getElementById('quiz-list-state');
+  const quizListTitle = document.getElementById('quiz-list-title');
+  const quizListContent = document.getElementById('quiz-list-content');
+  
+  if (!quizListState || !quizListContent) return;
+  
+  if (quizListTitle) {
+    quizListTitle.textContent = `${escapeHtml(quiz.episodeName)} - 퀴즈 목록`;
+  }
+  
+  quizListContent.innerHTML = quiz.questions.map((q, index) => {
+    const correctAnswer = q.options[q.correctIndex];
+    return `
+      <div class="quiz-list-item">
+        <div class="quiz-list-item-header">
+          <div class="quiz-list-item-title">문제 ${index + 1}: ${escapeHtml(q.question)}</div>
+          <div class="quiz-list-item-actions">
+            <button class="history-item-btn download-excel-btn" data-quiz-id="${quiz.id}" title="엑셀 다운로드">📥</button>
+          </div>
+        </div>
+        <div class="quiz-list-item-meta">
+          <div><strong>정답:</strong> ${escapeHtml(correctAnswer)}</div>
+          <div><strong>해설:</strong> ${escapeHtml(q.explanation)}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  setState(AppState.QUIZ_LIST);
+}
+
+// ============================================
+// 엑셀 다운로드 기능
+// ============================================
+
+function initExcelExport() {
+  // 프로젝트 전체 다운로드 버튼은 필요시 추가
+}
+
+function downloadQuizExcel(quizId) {
+  const quiz = QuizService.getById(quizId);
+  if (!quiz) {
+    showError('퀴즈를 찾을 수 없습니다.');
+    return;
+  }
+  
+  try {
+    const rows = formatQuizForExcel(quiz);
+    const csv = convertToCSV(rows);
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${escapeHtml(quiz.episodeName)}_${new Date(quiz.createdAt).toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    debugLog('EXCEL', '엑셀 다운로드 완료', { quizId, episodeName: quiz.episodeName });
+  } catch (error) {
+    errorLog('엑셀 다운로드 실패', error);
+    showError('엑셀 다운로드에 실패했습니다.');
+  }
+}
+
+function downloadProjectExcel(projectId) {
+  const project = ProjectService.getAll().find(p => p.id === projectId);
+  if (!project) {
+    showError('프로젝트를 찾을 수 없습니다.');
+    return;
+  }
+  
+  try {
+    const rows = formatProjectQuizzesForExcel(projectId);
+    const csv = convertToCSV(rows);
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${escapeHtml(project.name)}_전체_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    debugLog('EXCEL', '프로젝트 전체 엑셀 다운로드 완료', { projectId, projectName: project.name });
+  } catch (error) {
+    errorLog('프로젝트 엑셀 다운로드 실패', error);
+    showError('엑셀 다운로드에 실패했습니다.');
+  }
+}
+
+function convertToCSV(rows) {
+  return rows.map(row => 
+    row.map(cell => {
+      const cellStr = String(cell || '');
+      // CSV 형식에 맞게 따옴표와 줄바꿈 처리
+      if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
+        return `"${cellStr.replace(/"/g, '""')}"`;
+      }
+      return cellStr;
+    }).join(',')
+  ).join('\n');
+}
+
+// ============================================
+// 모달 관리
+// ============================================
+
+function initModals() {
+  const projectModal = document.getElementById('project-modal');
+  const episodeModal = document.getElementById('episode-modal');
+  
+  // 프로젝트 모달
+  if (projectModal) {
+    const cancelBtn = document.getElementById('project-modal-cancel');
+    const confirmBtn = document.getElementById('project-modal-confirm');
+    const input = document.getElementById('project-name-input');
+    
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', () => {
+        closeProjectModal();
+      });
+    }
+    
+    if (confirmBtn) {
+      confirmBtn.addEventListener('click', () => {
+        handleProjectModalConfirm();
+      });
+    }
+    
+    if (input) {
+      input.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          handleProjectModalConfirm();
+        }
+      });
+    }
+    
+    projectModal.addEventListener('click', (e) => {
+      if (e.target === projectModal) {
+        closeProjectModal();
+      }
+    });
+  }
+  
+  // 회차명 모달
+  if (episodeModal) {
+    const cancelBtn = document.getElementById('episode-modal-cancel');
+    const confirmBtn = document.getElementById('episode-modal-confirm');
+    const input = document.getElementById('episode-name-input');
+    
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', () => {
+        closeEpisodeModal();
+      });
+    }
+    
+    if (confirmBtn) {
+      confirmBtn.addEventListener('click', () => {
+        handleEpisodeModalConfirm();
+      });
+    }
+    
+    if (input) {
+      input.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          handleEpisodeModalConfirm();
+        }
+      });
+    }
+    
+    episodeModal.addEventListener('click', (e) => {
+      if (e.target === episodeModal) {
+        closeEpisodeModal();
+      }
+    });
+  }
+  
+  // 새 퀴즈 만들기 버튼
+  const backToCreateBtn = document.getElementById('back-to-create-btn');
+  if (backToCreateBtn) {
+    backToCreateBtn.addEventListener('click', () => {
+      setState(AppState.IDLE);
+    });
+  }
+}
+
+let currentEditingProject = null;
+let currentEditingQuiz = null;
+
+function openProjectModal(project = null) {
+  const modal = document.getElementById('project-modal');
+  const title = document.getElementById('project-modal-title');
+  const input = document.getElementById('project-name-input');
+  
+  if (!modal || !input) return;
+  
+  currentEditingProject = project;
+  
+  if (title) {
+    title.textContent = project ? '프로젝트 이름 변경' : '새 프로젝트';
+  }
+  
+  input.value = project ? project.name : '';
+  input.focus();
+  modal.classList.remove('hidden');
+}
+
+function closeProjectModal() {
+  const modal = document.getElementById('project-modal');
+  const input = document.getElementById('project-name-input');
+  
+  if (modal) modal.classList.add('hidden');
+  if (input) input.value = '';
+  currentEditingProject = null;
+}
+
+function handleProjectModalConfirm() {
+  const input = document.getElementById('project-name-input');
+  if (!input) return;
+  
+  const name = input.value.trim();
+  if (!name) {
+    showError('프로젝트명을 입력해주세요.');
+    return;
+  }
+  
+  try {
+    if (currentEditingProject) {
+      // 수정
+      ProjectService.update(currentEditingProject.id, { name });
+      debugLog('PROJECT', '프로젝트 수정', { id: currentEditingProject.id, name });
+    } else {
+      // 생성
+      const project = ProjectService.create(name);
+      currentProjectId = project.id;
+      if (document.getElementById('project-select')) {
+        document.getElementById('project-select').value = project.id;
+      }
+      debugLog('PROJECT', '프로젝트 생성', { id: project.id, name });
+    }
+    
+    renderProjectList();
+    renderProjectSelect();
+    renderHistoryList();
+    closeProjectModal();
+  } catch (error) {
+    errorLog('프로젝트 저장 실패', error);
+    showError(error.message || '프로젝트 저장에 실패했습니다.');
+  }
+}
+
+function openEpisodeModal(quiz) {
+  const modal = document.getElementById('episode-modal');
+  const input = document.getElementById('episode-name-input');
+  
+  if (!modal || !input) return;
+  
+  currentEditingQuiz = quiz;
+  input.value = quiz.episodeName;
+  input.focus();
+  modal.classList.remove('hidden');
+}
+
+function closeEpisodeModal() {
+  const modal = document.getElementById('episode-modal');
+  const input = document.getElementById('episode-name-input');
+  
+  if (modal) modal.classList.add('hidden');
+  if (input) input.value = '';
+  currentEditingQuiz = null;
+}
+
+function handleEpisodeModalConfirm() {
+  const input = document.getElementById('episode-name-input');
+  if (!input) return;
+  
+  const episodeName = input.value.trim();
+  if (!episodeName) {
+    showError('회차명을 입력해주세요.');
+    return;
+  }
+  
+  // 새로 저장하는 경우
+  if (!currentEditingQuiz) {
+    handleSaveQuiz();
+    return;
+  }
+  
+  // 기존 퀴즈 수정하는 경우
+  try {
+    QuizService.update(currentEditingQuiz.id, { episodeName });
+    renderHistoryList();
+    closeEpisodeModal();
+    debugLog('QUIZ', '회차명 수정', { quizId: currentEditingQuiz.id, episodeName });
+  } catch (error) {
+    errorLog('회차명 수정 실패', error);
+    showError(error.message || '회차명 수정에 실패했습니다.');
+  }
+}
+
+// ============================================
+// 유틸리티 함수
+// ============================================
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
 }
