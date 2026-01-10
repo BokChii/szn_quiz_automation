@@ -729,7 +729,7 @@ function renderCurrentQuestion() {
     
     // 옵션 버튼 이벤트 리스너
     if (selectedIdx === null) {
-      document.querySelectorAll('.option-btn').forEach(btn => {
+      document.querySelectorAll('.quiz-option').forEach(btn => {
         btn.addEventListener('click', () => {
           try {
             const idx = parseInt(btn.dataset.index);
