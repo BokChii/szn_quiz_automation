@@ -505,13 +505,9 @@ questionCountBtns.forEach(btn => {
 // 생성 버튼 업데이트
 function updateGenerateButton() {
   try {
-    if (images.length === 0) {
-      generateBtn.className = 'mt-10 w-full py-5 rounded-2xl font-black text-xl shadow-lg transition-all active:scale-[0.98] bg-slate-200 text-slate-400 cursor-not-allowed';
-      generateBtn.disabled = true;
-    } else {
-      generateBtn.className = 'mt-10 w-full py-5 rounded-2xl font-black text-xl shadow-lg transition-all active:scale-[0.98] bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-200';
-      generateBtn.disabled = false;
-    }
+    // generate-btn 클래스는 HTML에 이미 있으므로 유지
+    // disabled 상태만 변경하면 CSS의 :disabled 선택자가 자동으로 스타일 적용
+    generateBtn.disabled = images.length === 0;
     debugLog('UI', '생성 버튼 상태 업데이트', { enabled: images.length > 0 });
   } catch (error) {
     errorLog('생성 버튼 업데이트 실패', error);

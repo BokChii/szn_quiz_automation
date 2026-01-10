@@ -544,7 +544,9 @@ body {
 
 .generate-btn {
   display: block;
-  width: 100%;
+  width: 100% !important;
+  max-width: 100%;
+  min-width: 100%;
   padding: 1.25rem;
   border-radius: 1rem;
   font-weight: 900;
@@ -553,6 +555,8 @@ body {
   cursor: pointer;
   transition: all 0.2s;
   margin-top: 2.5rem;
+  margin-left: 0;
+  margin-right: 0;
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
   box-sizing: border-box;
 }
