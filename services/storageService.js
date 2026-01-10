@@ -250,9 +250,6 @@ function formatQuizForExcel(quiz) {
   rows.push([
     '문제 번호',
     '질문',
-    '선택지 1',
-    '선택지 2',
-    '선택지 3',
     '정답',
     '오답 1',
     '오답 2',
@@ -267,9 +264,6 @@ function formatQuizForExcel(quiz) {
     rows.push([
       index + 1,
       q.question,
-      q.options[0],
-      q.options[1],
-      q.options[2],
       correctAnswer,
       wrongAnswers[0] || '',
       wrongAnswers[1] || '',
@@ -294,9 +288,6 @@ function formatProjectQuizzesForExcel(projectId) {
     allRows.push([
       '문제 번호',
       '질문',
-      '선택지 1',
-      '선택지 2',
-      '선택지 3',
       '정답',
       '오답 1',
       '오답 2',
@@ -311,9 +302,6 @@ function formatProjectQuizzesForExcel(projectId) {
       allRows.push([
         index + 1,
         q.question,
-        q.options[0],
-        q.options[1],
-        q.options[2],
         correctAnswer,
         wrongAnswers[0] || '',
         wrongAnswers[1] || '',
